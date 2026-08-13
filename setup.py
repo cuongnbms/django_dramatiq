@@ -49,6 +49,8 @@ setup(
         "Programming Language :: Python :: 3.14",
     ],
     extras_require={
+        # dramatiq_stats talks to Redis directly; only needed with a Redis broker.
+        "redis": ["redis>=4.0"],
         "dev": [
             "ruff",
             "pytest",

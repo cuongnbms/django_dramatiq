@@ -1,45 +1,87 @@
 from time import sleep
 
 from django.conf import settings
-from django.core.management import BaseCommand
-import redis
+from django.core.management import BaseCommand, CommandError
 from django.utils.timezone import now
+
+# Number of keys SCAN is asked for per round-trip.
+SCAN_COUNT = 500
 
 
 class Command(BaseCommand):
+    help = "Displays queue sizes for a Redis broker, refreshed on a cycle."
 
     def add_arguments(self, parser):
         parser.add_argument('-c', '--cycle', type=int, help='refresh cycle', default=3)
 
     def handle(self, *args, **options):
         cycle = options.get('cycle', 3)
-        while True:
-            try:
-                self._run(cycle)
-                sleep(cycle)
-            except KeyboardInterrupt:
-                break
+        client = self._get_client()
+        try:
+            while True:
+                try:
+                    self._run(client, cycle)
+                    sleep(cycle)
+                except KeyboardInterrupt:
+                    break
+        finally:
+            client.close()
 
-    def _run(self, cycle):
-        client = redis.Redis.from_url(settings.DRAMATIQ_BROKER['OPTIONS']['url'])
-        keys = client.keys('dramatiq:*')
+    def _import_redis(self):
+        try:
+            import redis
+        except ImportError as e:
+            raise CommandError(
+                "The 'redis' package is required by dramatiq_stats. "
+                "Install it with: pip install django_dramatiq[redis]"
+            ) from e
+        return redis
 
-        format_row = '{:<80} {:<15}'
+    def _broker_url(self):
+        try:
+            return settings.DRAMATIQ_BROKER['OPTIONS']['url']
+        except (AttributeError, KeyError, TypeError) as e:
+            raise CommandError(
+                "dramatiq_stats requires a Redis broker configured with "
+                "DRAMATIQ_BROKER['OPTIONS']['url']."
+            ) from e
 
-        queue_data = []
-        processing_data = []
-        for key in keys:
+    def _get_client(self):
+        redis = self._import_redis()
+        return redis.Redis.from_url(self._broker_url())
+
+    def _run(self, client, cycle):
+        # SCAN rather than KEYS: KEYS is O(N) over the whole keyspace and blocks
+        # the server for the duration, which stalls every other client sharing
+        # this broker. SCAN walks the keyspace in bounded chunks instead.
+        counted_keys = []
+        for key in client.scan_iter(match='dramatiq:*', count=SCAN_COUNT):
             key = key.decode()
             queue_type, queue_name = self._get_queue_name(key)
             if queue_name:
-                if queue_type == 'XQ':
-                    queue_data.append(format_row.format(f'{queue_name}', client.zcard(key)))
-                elif queue_type == 'acks':
-                    processing_data.append(format_row.format(f'[ACKS] {queue_name}', client.scard(key)))
-                else:
-                    queue_data.append(format_row.format(f'{queue_name}', client.llen(key)))
-        self._print_result(cycle, format_row, queue_data, processing_data)
+                counted_keys.append((key, queue_type, queue_name))
 
+        # One round-trip for all the counts instead of one per key.
+        pipe = client.pipeline(transaction=False)
+        for key, queue_type, _ in counted_keys:
+            if queue_type == 'XQ':
+                pipe.zcard(key)
+            elif queue_type == 'acks':
+                pipe.scard(key)
+            else:
+                pipe.llen(key)
+        counts = pipe.execute()
+
+        format_row = '{:<80} {:<15}'
+        queue_data = []
+        processing_data = []
+        for (_, queue_type, queue_name), count in zip(counted_keys, counts):
+            if queue_type == 'acks':
+                processing_data.append(format_row.format(f'[ACKS] {queue_name}', count))
+            else:
+                queue_data.append(format_row.format(f'{queue_name}', count))
+
+        self._print_result(cycle, format_row, queue_data, processing_data)
 
     def _print_result(self, cycle, format_row, queue_data, processing_data):
         queue_data.sort()
