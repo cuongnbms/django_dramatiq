@@ -10,9 +10,9 @@ extend-select = ["UP"]
 DJANGO_SETTINGS_MODULE = "tests.settings"
 pythonpath = ["."]
 testpaths = ["tests"]
-# NOTE: upstream gates at 87%. This fork adds scheduler/stats code that has no
-# tests yet, so the gate is lowered here -- raise it back as coverage improves.
-addopts = "--cov django_dramatiq --cov-report term --cov-fail-under=60"
+# NOTE: upstream gates at 87%. The scheduler/stats code this fork adds is now
+# covered too; utils.py is what still keeps this below the upstream number.
+addopts = "--cov django_dramatiq --cov-report term --cov-fail-under=80"
 
 [tool.coverage.report]
 omit = [

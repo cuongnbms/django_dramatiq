@@ -287,6 +287,11 @@ from django_dramatiq.tasks import delete_old_tasks
 delete_old_tasks.send(max_task_age=60 * 60 * 24)
 ```
 
+Deletion happens in batches of 1000 rows rather than in one statement, so
+the cleanup never holds a lock on the whole task table for the length of a
+single long transaction. `Task.tasks.delete_old_tasks()` returns the number
+of rows deleted and takes an optional `batch_size`.
+
 
 ## Middleware
 
@@ -404,6 +409,15 @@ You can find an example application built with Django Dramatiq [here](/examples/
 - Add command dramatiq_stats
 - Add scheduler
 
+## Migrations
+
+Migration `0005` adds an `eta` column and four indexes covering the admin's
+filters and the `created_at` lookup used by `delete_old_tasks`. On PostgreSQL
+`CREATE INDEX` takes an ACCESS EXCLUSIVE lock for its duration; if your task
+table is large, create the indexes out of band with `CREATE INDEX
+CONCURRENTLY` and apply the migration with `--fake`. Rows created before the
+migration have `eta = NULL`.
+
 ## Settings
 
 ```python
@@ -438,9 +452,16 @@ python3 manage.py run_scheduler
 ```
 
 **Task stats**
+
+Requires a Redis broker and the `redis` package:
+
 ```sh
+pip install django_dramatiq[redis]
 python3 manage.py dramatiq_stats
 ```
+
+The command walks the keyspace with `SCAN` and batches the per-queue counts
+into a single pipeline, so it does not block the broker other services share.
 
 
 
