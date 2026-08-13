@@ -1,7 +1,5 @@
 import json
-from datetime import datetime, timezone
 
-from django.conf import settings
 from django.contrib import admin
 from django.utils.html import format_html
 from django_dramatiq.apps import DjangoDramatiqConfig
@@ -54,7 +52,7 @@ class TaskAdmin(admin.ModelAdmin):
             'Timeline',
             {
                 'fields': (
-                    ('created_at', 'start_at'), ('updated_at', 'end_at'), ('duration', 'wait_time')
+                    ('created_at', 'eta'), ('start_at', 'end_at'), ('updated_at', 'duration'), ('wait_time',)
                 )
             }
         ),
@@ -70,12 +68,14 @@ class TaskAdmin(admin.ModelAdmin):
 
     )
 
-    def eta(self, instance):
-        timestamp = instance.message.options.get("eta", instance.message.message_timestamp) / 1000
+    # The changelist would otherwise run a second COUNT(*) over the whole table.
+    show_full_result_count = False
 
-        # Django expects a timezone-aware datetime if USE_TZ is True, and a naive datetime in localtime otherwise.
-        tz = timezone.utc if settings.USE_TZ else None
-        return datetime.fromtimestamp(timestamp, tz=tz)
+    def get_queryset(self, request):
+        # message_data is a blob that is only rendered on the detail page. Every
+        # changelist row would otherwise pull it over the wire, so defer it and
+        # let the detail view load it lazily when message_details asks for it.
+        return super().get_queryset(request).defer("message_data")
 
     def message_details(self, instance):
         message_dict = instance.message._asdict()

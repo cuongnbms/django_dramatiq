@@ -1,28 +1,23 @@
 import logging
-from django.conf import settings
+import math
+
 from django import db
+from django.conf import settings
 from django.utils import timezone
 from dramatiq.middleware import Middleware
 
 LOGGER = logging.getLogger("django_dramatiq.AdminMiddleware")
-
-DRAMATIQ_ADMIN_IGNORE_TASKS = []
-DRAMATIQ_ADMIN_IGNORE_QUEUES = []
-
-if hasattr(settings, 'DRAMATIQ_ADMIN_IGNORE_TASKS'):
-    DRAMATIQ_ADMIN_IGNORE_TASKS = settings.DRAMATIQ_ADMIN_IGNORE_TASKS
-
-if hasattr(settings, 'DRAMATIQ_ADMIN_IGNORE_QUEUES'):
-    DRAMATIQ_ADMIN_IGNORE_QUEUES = settings.DRAMATIQ_ADMIN_IGNORE_QUEUES
 
 
 class AdminMiddleware(Middleware):
     """This middleware keeps track of task executions."""
 
     def _ignore_messages(self, message):
-        if message.queue_name in DRAMATIQ_ADMIN_IGNORE_QUEUES:
+        # Read the settings on each call rather than at import time so that
+        # override_settings and runtime changes are honoured.
+        if message.queue_name in getattr(settings, "DRAMATIQ_ADMIN_IGNORE_QUEUES", ()):
             return True
-        if message.actor_name in DRAMATIQ_ADMIN_IGNORE_TASKS:
+        if message.actor_name in getattr(settings, "DRAMATIQ_ADMIN_IGNORE_TASKS", ()):
             return True
         return False
 
@@ -40,8 +35,6 @@ class AdminMiddleware(Middleware):
         Task.tasks.create_or_update_from_message(
             message,
             status=status,
-            actor_name=message.actor_name,
-            queue_name=message.queue_name,
         )
 
     def before_process_message(self, broker, message):
@@ -56,9 +49,7 @@ class AdminMiddleware(Middleware):
         Task.tasks.create_or_update_from_message(
             message,
             status=Task.STATUS_RUNNING,
-            actor_name=message.actor_name,
-            queue_name=message.queue_name,
-            start_at=start_at
+            start_at=start_at,
         )
 
     def after_skip_message(self, broker, message):
@@ -82,13 +73,16 @@ class AdminMiddleware(Middleware):
         task = Task.tasks.create_or_update_from_message(
             message,
             status=status,
-            actor_name=message.actor_name,
-            queue_name=message.queue_name,
             end_at=end_at,
         )
         if task.start_at:
-            task.duration = (end_at - task.start_at).total_seconds() + 1
-            task.save()
+            # duration is a PositiveIntegerField, so round up: a task that took
+            # any measurable time should report at least one second rather than
+            # being truncated to zero.
+            task.duration = math.ceil((end_at - task.start_at).total_seconds())
+            # Only write the column that changed. A bare save() would rewrite
+            # the whole row, message_data blob included.
+            task.save(update_fields=["duration"])
 
 
 class DbConnectionsMiddleware(Middleware):
