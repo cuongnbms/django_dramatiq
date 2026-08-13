@@ -46,3 +46,53 @@ def test_message_details_escapes_html(broker):
 
     assert "<script>" not in rendered
     assert "&lt;script&gt;" in rendered
+
+
+def test_message_details_masks_args_with_non_json_encoder(broker, monkeypatch):
+    # With a non-JSON encoder the payload can't be shown verbatim, so the admin
+    # substitutes placeholders. args is a list and kwargs a dict.
+    from dramatiq.encoder import PickleEncoder
+
+    from tests.testapp1.tasks import example
+
+    monkeypatch.setattr(DjangoDramatiqConfig, "select_encoder", classmethod(lambda cls: PickleEncoder()))
+
+    message = example.message(1, 2, foo="bar")
+    admin = TaskAdmin(Task, AdminSite())
+
+    rendered = str(admin.message_details(_task_for(message)))
+    details = json.loads(html.unescape(rendered.removeprefix("<pre>").removesuffix("</pre>")))
+
+    assert details["args"] == ["<1>", "<2>"]
+    assert details["kwargs"] == {"foo": "<bar>"}
+
+
+def test_change_page_renders(admin_client, broker):
+    # Every non-editable field named in fieldsets must render on the change
+    # page; a mismatch between fieldsets and readonly_fields blows it up.
+    import uuid
+
+    from tests.testapp1.tasks import example
+
+    message = example.message(1, foo="bar")
+    task = Task(
+        id=uuid.uuid4(),
+        message_data=message.encode(),
+        actor_name="example",
+        queue_name="default",
+        params={"args": [1], "kwargs": {"foo": "bar"}},
+    )
+    task.save()
+
+    response = admin_client.get(f"/admin/django_dramatiq/task/{task.id}/change/")
+
+    assert response.status_code == 200
+    content = response.content.decode()
+    assert "example" in content
+    assert "Timeline" in content
+
+
+def test_changelist_renders(admin_client, broker):
+    response = admin_client.get("/admin/django_dramatiq/task/")
+
+    assert response.status_code == 200
