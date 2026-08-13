@@ -20,17 +20,18 @@ Seemlessly integrate [Dramatiq][dramatiq] with your Django project!
 
 ## Installation
 
-To install, ensure both Django Dramatiq and Dramatiq are installed, along with RabbitMQ:
+This fork is not published to PyPI -- `django-dramatiq` there is upstream's
+package. Install it from git, pinned to a tag:
 
-    pip install django-dramatiq 'dramatiq[rabbitmq]'
+    pip install 'django_dramatiq @ git+https://github.com/cuongnbms/django_dramatiq@v1.2.0' 'dramatiq[rabbitmq]'
 
-Or with Redis:
+Or with Redis, where the `dramatiq_stats` command also needs the `redis` extra:
 
-    pip install django-dramatiq 'dramatiq[redis]'
+    pip install 'django_dramatiq[redis] @ git+https://github.com/cuongnbms/django_dramatiq@v1.2.0' 'dramatiq[redis]'
 
-If you would like to install with `watch`:
+If you would like to install with `watch`, add it to the dramatiq extras:
 
-    pip install django-dramatiq 'dramatiq[rabbitmq, watch]'
+    pip install 'django_dramatiq @ git+https://github.com/cuongnbms/django_dramatiq@v1.2.0' 'dramatiq[rabbitmq, watch]'
 
 
 Add `django_dramatiq` to installed apps *before* any of your custom
@@ -453,10 +454,9 @@ python3 manage.py run_scheduler
 
 **Task stats**
 
-Requires a Redis broker and the `redis` package:
+Requires a Redis broker and the `redis` extra (see Installation above):
 
 ```sh
-pip install django_dramatiq[redis]
 python3 manage.py dramatiq_stats
 ```
 
