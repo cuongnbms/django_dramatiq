@@ -9,13 +9,13 @@ from django_dramatiq.tasks import delete_old_tasks
 
 
 def test_can_delete_old_tasks(db):
-    # Given a Task that was created more than a day ago
+    # Given a Task that was created longer ago than the default max task age (7 days)
     task = Task(id=uuid.uuid4(), message_data=b"")
     task.save()
 
     # we have to set the created_at time after the initial save in
     # order to avoid it getting overwritten.
-    task.created_at = now() - timedelta(days=2)
+    task.created_at = now() - timedelta(days=8)
     task.save()
 
     # When I call the delete_old_tasks task

@@ -5,10 +5,87 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.html).
 
-## Unreleased
+## [1.2.0] - 2026-08-13 (fork)
+
+Merged upstream `Bogdanp/django_dramatiq` up to 0.15.0 (commit e3bef09).
+
+### Added (from upstream)
+- Support for `--use-spawn` in `rundramatiq` (#199)
+- Process/thread counts via `DRAMATIQ_NPROCS` / `DRAMATIQ_NTHREADS` env vars (#186)
+- Watch directory settable via CLI (#192)
+- `rundramatiq --help` now shows option defaults (#167)
+- Task details still render in the admin when a non-JSON encoder is in use (#136, #189)
+- Support for Python 3.12-3.14 and Django 5.2 / 6.0
+
+### Changed
+- `django_dramatiq.encoders.JSONEncoder` now subclasses `dramatiq.encoder.JSONEncoder`
+  instead of `dramatiq.Encoder`, so the admin recognises it as a JSON encoder and shows
+  real task args/kwargs rather than `<...>` placeholders.
+- Prometheus middleware path corrected to `dramatiq.middleware.prometheus.Prometheus` (#217)
+- Minimum requirements raised to Python 3.10 and Django 4.2 (excluding EOL 5.0 / 5.1)
+- Tooling migrated to ruff + pre-commit; `setup.cfg` / `.bumpversion.cfg` replaced by `pyproject.toml`
+
+### Fork behaviour retained
+- Extra `Task` fields (`retries`, `params`, `wait_time`, `start_at`, `end_at`, `duration`)
+- `run_scheduler` / `dramatiq_stats` management commands
+- `DRAMATIQ_ADMIN_IGNORE_TASKS` / `DRAMATIQ_ADMIN_IGNORE_QUEUES`
+- Admin renders via `format_html` (not affected by the upstream `mark_safe` XSS notice)
+- `delete_old_tasks` default age of 7 days
+- Single-database task storage (`DRAMATIQ_TASKS_DATABASE` is not honoured)
+
+## [Unreleased] -
+### Changed
+- Update dramatiq Prometheus middleware path in docs examples (#217)
+
+## [0.15.0] - 2025-11-12
+### Added
+- Support for `--use-spawn` (#199)
+- Support for 3.14 (#200)
+
+### Dropped
+- Support for 3.9 (#200)
+
+
+## [0.14.0] - 2025-07-23
+### Added
+- Add support for Django 5.2 (#195)
+- Allow watch directory to be set via CLI (#192)
+- When using the PickleEncoder, fix task view by showing a representation of the args (#189)
+
+## [0.13.0] - 2025-02-24
 
 ### Added
+Set number of processes/threads through DRAMATIQ_NPROCS, DRAMATIQ_NTHREADS. ([m000], [#186])
+
+[m000]: https://github.com/m000
+[#186]: https://github.com/Bogdanp/django_dramatiq/pull/186
+
+## [0.12.0] - 2024-12-29
+### Changed
+- Set thread count to 8 as per dramatiq default. Fix [#153]. ([@andrewgy8], [#170])
+- Use ArgumentDefaultsHelpFormatter to show the defaults for rundramatiq options. (#167)
+
+[@andrewgy8]: https://github.com/andrewgy8
+[#153]: https://github.com/Bogdanp/django_dramatiq/issues/153
+[#170]: https://github.com/Bogdanp/django_dramatiq/pull/170
+
+### Added
+- Display task details in the admin when JSONEncoder is not used. Fix [#135]. ([@huubbouma], [#136])
+- Support for Python 3.13
+- Support for Django 5.1
+
+[@huubbouma]: https://github.com/huubbouma
+[#135]: https://github.com/Bogdanp/django_dramatiq/issues/135
+[#136]: https://github.com/Bogdanp/django_dramatiq/pull/136
+
+### Dropped
+- Support for Python 3.8
+- Support for Django 3.2
+
+## [0.11.6] - 2023-12-12
+### Added
 - Support for Python 3.12
+- Support for Django 5.0
 
 ## [0.11.5] - 2023-08-11
 ### Added
@@ -41,7 +118,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 - Support for Django 4.0 and 4.1
 
 ### Changed
-- Fixed issue [#123] in deferred `DjangoDramatiqConfig` initialization. 
+- Fixed issue [#123] in deferred `DjangoDramatiqConfig` initialization.
   Dramatiq configuration now happens before loading importing all Django apps models,
   so loaded tasks will use the correct Dramatiq settings. ([@amureki], [#126])
 
@@ -293,7 +370,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 [@rakanalh]: https://github.com/rakanalh
 
 
-[Unreleased]: https://github.com/Bogdanp/django_dramatiq/compare/v0.10.0...HEAD
+[Unreleased]: https://github.com/Bogdanp/django_dramatiq/compare/v0.12.0...HEAD
+[0.12.0]: https://github.com/Bogdanp/django_dramatiq/compare/v0.11.6...v0.12.0
 [0.10.0]: https://github.com/Bogdanp/django_dramatiq/compare/v0.9.1...v0.10.0
 [0.9.1]: https://github.com/Bogdanp/django_dramatiq/compare/v0.9.0...v0.9.1
 [0.9.0]: https://github.com/Bogdanp/django_dramatiq/compare/v0.8.0...v0.9.0

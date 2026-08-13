@@ -2,6 +2,7 @@
 /.cache
 /.coverage
 /.tox
+/.venv
 /.pytest_cache
 /.python-version
 /benchmark*.svg

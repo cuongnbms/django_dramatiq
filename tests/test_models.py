@@ -9,6 +9,10 @@ def test_task_create_or_update_from_message(transactional_db, broker, worker):
     message_id = uuid.uuid4()
     message.encode.return_value = b"{}"
     message.message_id = message_id
+    # the manager also records retries and the args/kwargs payload
+    message.options = {}
+    message.args = []
+    message.kwargs = {}
 
     Task.tasks.create_or_update_from_message(message)
 

@@ -1,10 +1,11 @@
 import json
-from datetime import datetime, timezone as dt_timezone
+from datetime import datetime, timezone
 
 from django.conf import settings
 from django.contrib import admin
-from django.utils import timezone
 from django.utils.html import format_html
+from django_dramatiq.apps import DjangoDramatiqConfig
+from dramatiq.encoder import JSONEncoder
 
 from .models import Task
 from .utils import display_diff_time
@@ -13,7 +14,15 @@ from .utils import display_diff_time
 @admin.register(Task)
 class TaskAdmin(admin.ModelAdmin):
     exclude = ("message_data",)
-    readonly_fields = ("message_details", "traceback", "retries", "queue_name", "actor_name", "display_params")
+    readonly_fields = (
+        "message_details",
+        "traceback",
+        "status",
+        "retries",
+        "queue_name",
+        "actor_name",
+        "display_params",
+    )
     list_display = (
         "id",
         "actor_name",
@@ -62,16 +71,23 @@ class TaskAdmin(admin.ModelAdmin):
     )
 
     def eta(self, instance):
-        timestamp = (
-            instance.message.options.get("eta", instance.message.message_timestamp) / 1000
-        )
+        timestamp = instance.message.options.get("eta", instance.message.message_timestamp) / 1000
 
         # Django expects a timezone-aware datetime if USE_TZ is True, and a naive datetime in localtime otherwise.
-        tz = dt_timezone.utc if settings.USE_TZ else None
+        tz = timezone.utc if settings.USE_TZ else None
         return datetime.fromtimestamp(timestamp, tz=tz)
 
     def message_details(self, instance):
-        message_details = json.dumps(instance.message._asdict(), indent=4)
+        message_dict = instance.message._asdict()
+
+        # make sure we can still get a representation of the
+        # args + kwargs payload when a non json encoder is in use
+        dramatiq_encoder = DjangoDramatiqConfig.select_encoder()
+        if not isinstance(dramatiq_encoder, JSONEncoder):
+            message_dict["args"] = [f"<{v}>" for v in message_dict["args"]]
+            message_dict["kwargs"] = {k: f"<{v}>" for k, v in message_dict["kwargs"].items()}
+
+        message_details = json.dumps(message_dict, indent=4)
         return format_html("<pre>{}</pre>", message_details)
 
     def traceback(self, instance):

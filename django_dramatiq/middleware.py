@@ -17,8 +17,7 @@ if hasattr(settings, 'DRAMATIQ_ADMIN_IGNORE_QUEUES'):
 
 
 class AdminMiddleware(Middleware):
-    """This middleware keeps track of task executions.
-    """
+    """This middleware keeps track of task executions."""
 
     def _ignore_messages(self, message):
         if message.queue_name in DRAMATIQ_ADMIN_IGNORE_QUEUES:
@@ -93,8 +92,7 @@ class AdminMiddleware(Middleware):
 
 
 class DbConnectionsMiddleware(Middleware):
-    """This middleware cleans up db connections on worker shutdown.
-    """
+    """This middleware cleans up db connections on worker shutdown."""
 
     def _close_old_connections(self, *args, **kwargs):
         db.close_old_connections()

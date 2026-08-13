@@ -7,7 +7,7 @@ def rel(*xs):
     return os.path.join(os.path.abspath(os.path.dirname(__file__)), *xs)
 
 
-with open(rel("django_dramatiq", "__init__.py"), "r") as f:
+with open(rel("django_dramatiq", "__init__.py")) as f:
     version_marker = "__version__ = "
     for line in f:
         if line.startswith(version_marker):
@@ -30,7 +30,7 @@ setup(
         "django_dramatiq.migrations",
     ],
     install_requires=[
-        "django>=3.2",
+        "django>=4.2,!=5.0.*,!=5.1.*",
         "dramatiq>=1.11",
         "apscheduler>=3.10.4",
     ],
@@ -38,27 +38,25 @@ setup(
         "Environment :: Web Environment",
         "Operating System :: OS Independent",
         "Framework :: Django",
-        "Framework :: Django :: 3.2",
-        "Framework :: Django :: 4.1",
         "Framework :: Django :: 4.2",
+        "Framework :: Django :: 5.2",
+        "Framework :: Django :: 6.0",
         "Programming Language :: Python",
-        "Programming Language :: Python :: 3.8",
-        "Programming Language :: Python :: 3.9",
         "Programming Language :: Python :: 3.10",
         "Programming Language :: Python :: 3.11",
+        "Programming Language :: Python :: 3.12",
+        "Programming Language :: Python :: 3.13",
+        "Programming Language :: Python :: 3.14",
     ],
     extras_require={
         "dev": [
-            "bumpversion",
-            "flake8",
-            "flake8-quotes",
-            "isort",
+            "ruff",
             "pytest",
             "pytest-cov",
             "pytest-django",
             "twine",
-        ]
+        ],
     },
-    python_requires=">=3.8",
+    python_requires=">=3.10",
     include_package_data=True,
 )

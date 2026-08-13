@@ -7,4 +7,5 @@ def delete_old_tasks(max_task_age=7 * 86400): # 7 days
     database.
     """
     from .models import Task
+
     Task.tasks.delete_old_tasks(max_task_age)

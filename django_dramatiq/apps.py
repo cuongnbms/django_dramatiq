@@ -18,14 +18,14 @@ DEFAULT_BROKER_SETTINGS = {
         "connection_attempts": 5,
     },
     "MIDDLEWARE": [
-        "dramatiq.middleware.Prometheus",
+        "dramatiq.middleware.prometheus.Prometheus",
         "dramatiq.middleware.AgeLimit",
         "dramatiq.middleware.TimeLimit",
         "dramatiq.middleware.Callbacks",
         "dramatiq.middleware.Retries",
         "django_dramatiq.middleware.AdminMiddleware",
         "django_dramatiq.middleware.DbConnectionsMiddleware",
-    ]
+    ],
 }
 
 RATE_LIMITER_BACKEND = None
@@ -68,8 +68,7 @@ class DjangoDramatiqConfig(AppConfig):
         broker_class = import_string(broker_path)
         broker_options = broker_settings.get("OPTIONS", {})
         middleware = [
-            load_middleware(path, **self.get_middleware_kwargs(path))
-            for path in broker_settings.get("MIDDLEWARE", [])
+            load_middleware(path, **self.get_middleware_kwargs(path)) for path in broker_settings.get("MIDDLEWARE", [])
         ]
 
         if result_backend is not None:
@@ -84,7 +83,6 @@ class DjangoDramatiqConfig(AppConfig):
 
     @classmethod
     def get_rate_limiter_backend(cls):
-        global RATE_LIMITER_BACKEND
         if RATE_LIMITER_BACKEND is None:
             raise RuntimeError("The rate limiter backend has not been configured.")
 
@@ -94,7 +92,7 @@ class DjangoDramatiqConfig(AppConfig):
     def get_middleware_kwargs(cls, path):
         if isinstance(path, str):
             middleware_path = path.rsplit(".", 1)[1].lower()
-            middleware_kwargs_method = "middleware_{}_kwargs".format(middleware_path)
+            middleware_kwargs_method = f"middleware_{middleware_path}_kwargs"
             if hasattr(cls, middleware_kwargs_method):
                 return getattr(cls, middleware_kwargs_method)()
         return {}

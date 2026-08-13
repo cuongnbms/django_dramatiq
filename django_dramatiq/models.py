@@ -27,14 +27,12 @@ class TaskManager(models.Manager):
                     "kwargs": message.kwargs,
                 },
                 **extra_fields,
-            }
+            },
         )
         return task
 
     def delete_old_tasks(self, max_task_age):
-        self.filter(
-            created_at__lte=now() - timedelta(seconds=max_task_age)
-        ).delete()
+        self.filter(created_at__lte=now() - timedelta(seconds=max_task_age)).delete()
 
 
 class Task(models.Model):
@@ -84,7 +82,7 @@ class Task(models.Model):
         params = ", ".join(repr(arg) for arg in self.params.get('args', []))
         if self.params.get("kwargs", {}):
             params += ", " if params else ""
-            params += ", ".join("%s=%r" % (name, value) for name, value in self.params.get("kwargs").items())
+            params += ", ".join(f"{name}={value!r}" for name, value in self.params.get("kwargs").items())
         return params
     display_params.short_description = 'Params'
 
